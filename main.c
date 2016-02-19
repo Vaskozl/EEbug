@@ -17,8 +17,7 @@ void initPWM ()
     TCCR0A =
         (1 << COM0A1) |    // set OC0A on compare match, clear at TOP
         (1 << COM0B1) |    // set OC0B on compare match, clear at TOP
-//        (1 << WGM01)  |    // fast PWM mode
-        (1 << WGM00);
+        (1 << WGM00);      // phase correct PWM mode
 
     TCCR0B = (1 << CS00);  // prescaler = 1
 }
