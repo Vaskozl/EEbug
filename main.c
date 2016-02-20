@@ -11,6 +11,8 @@
 volatile const uint8_t adc2 = (1<<ADLAR) | 2;
 volatile const uint8_t adc3 = (1<<ADLAR) | 3;
 
+void move(int8_t);
+
 void initPWM ()
 {
     DDRB |= (1 << PB0) | (1 << PB1);
@@ -44,6 +46,7 @@ ISR(ADC_vect)
 {
     static uint8_t firstTime = 1;
     static uint8_t val;
+    int8_t current_position = 1;
 
     val = ADCH;
 
@@ -57,13 +60,17 @@ ISR(ADC_vect)
     if (firstTime == 1)
         firstTime = 0;
 
+    /*  current_position
+     * -1 line is on the left
+     *  0 line is in the middle
+     *  1 line is on the right
+     */
+
     else if (ADMUX == adc2)
     {
         ADMUX = adc3;
         if (val > 30){
-          OCR0A = 160;
-        } else {
-          OCR0A = 0;
+          current_position++;
         }
     }
 
@@ -71,16 +78,46 @@ ISR(ADC_vect)
     {
         ADMUX = adc2;
         if (val > 30){
-          OCR0B = 160;
-        } else {
-          OCR0B = 0;
+          current_position--;
         }
     }
+
+    move(current_position);
+}
+
+void move(int8_t current_position){
+  static int8_t previous_position = 0;
+  static int8_t offset;
+  static int8_t derivative;
+  static int8_t integral = 0;
+
+
+  derivative  = current_position - previous_position;
+  integral += current_position;
+  previous_position = current_position;
+
+  offset = (current_position * 30 + integral  + derivative * 60);
+  OCR0A = 160 + offset;
+  OCR0B = 160 - offset;
+}
+
+
+void tune(){
+  for(int i = 0;i<5;i++){
+  OCR0A = 120;
+  OCR0B = 120;
+  _delay_ms(200);
+
+  OCR0A = 0;
+  OCR0B = 0;
+  _delay_ms(200);
+  }
 }
 
 int main ()
 {
     initPWM ();
+    tune (); // play a tune
     initADC ();
 
     for (;;)
