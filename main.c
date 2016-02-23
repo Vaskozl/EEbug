@@ -8,6 +8,8 @@
 #include <util/delay.h>
 #include <stdint.h>
 
+#define maxOffset 200
+
 volatile const uint8_t adc2 = (1<<ADLAR) | 2;
 volatile const uint8_t adc3 = (1<<ADLAR) | 3;
 
@@ -19,9 +21,10 @@ void initPWM ()
     TCCR0A =
         (1 << COM0A1) |    // set OC0A on compare match, clear at TOP
         (1 << COM0B1) |    // set OC0B on compare match, clear at TOP
-        (1 << WGM00);      // phase correct PWM mode
+        (1 << WGM00)  |    // fast PWM mode
+        (1 << WGM01);      
 
-    TCCR0B = (1 << CS00);  // prescaler = 1
+    TCCR0B = (1 << CS00) | (1 << CS01);  // prescaler = 64
 }
 
 void initADC ()
@@ -71,6 +74,10 @@ ISR(ADC_vect)
         ADMUX = adc3;
         if (val > 30){
           current_position++;
+/*          OCR0A = 120;
+        } else {
+          OCR0A = 0;
+	*/
         }
     }
 
@@ -79,31 +86,43 @@ ISR(ADC_vect)
         ADMUX = adc2;
         if (val > 30){
           current_position--;
+/*          OCR0B = 120;
+        } else {
+          OCR0B = 0;
+	*/
         }
     }
 
     move(current_position);
 }
 
+
 void move(int8_t current_position){
-  static int8_t previous_position = 0;
-  static int8_t offset;
-  static int8_t derivative;
-  static int8_t integral = 0;
+  static int previous_position = 0;
+  static int offset;
+  static int derivative;
+  static int integral = 0;
 
 
   derivative  = current_position - previous_position;
   integral += current_position;
   previous_position = current_position;
 
-  offset = (current_position * 30 + integral  + derivative * 60);
-  OCR0A = 160 + offset;
-  OCR0B = 160 - offset;
+  offset = (current_position * 160 + integral * 0  + derivative * 0);
+//  offset = (current_position * 120);
+
+  if (offset > maxOffset ) offset = maxOffset;
+  if (offset < 0) offset = 0; 
+
+  OCR0A = 80 + offset;
+  OCR0B = 80 - offset;
 }
 
 
+
+/*
 void tune(){
-  for(int i = 0;i<5;i++){
+  for(int8_t i = 0;i<5;i++){
   OCR0A = 120;
   OCR0B = 120;
   _delay_ms(200);
@@ -112,12 +131,16 @@ void tune(){
   OCR0B = 0;
   _delay_ms(200);
   }
+  TCCR0B = (1 << CS00) | (1 << CS01);  // prescaler = 64
 }
+*/
+
 
 int main ()
 {
     initPWM ();
-    tune (); // play a tune
+//    tune (); // play a tune
+
     initADC ();
 
     for (;;)
