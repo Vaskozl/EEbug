@@ -79,7 +79,7 @@ ISR(ADC_vect) {
       ADMUX = adc2;
 //    if (val > 25) {
     if (val > 35) {
-      current_position-=(float)val;
+      current_position-=(float)val/255;
 //      OCR0B = 160;
 /*    } else {
       OCR0B = 0;
